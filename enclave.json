@@ -1,0 +1,23 @@
+{
+ "exe": "main",
+ "key": "private.pem",
+ "debug": true,
+ "heapSize": 512,
+ "executableHeap": false,
+ "productID": 1,
+ "securityVersion": 1,
+ "mounts": [
+		{
+			"source": "/home/yjlee/repos/doracle-poc",
+			"target": "/data",
+			"type": "hostfs",
+			"readOnly": false
+		},
+		{
+			"target": "/tmp",
+			"type": "memfs"
+		}
+	],
+ "env": null,
+ "files": null
+}

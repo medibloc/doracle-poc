@@ -40,6 +40,7 @@ func main() {
 		ReadTimeout:  15 * time.Second,
 	}
 
+	log.Printf("Listening %s...", srv.Addr)
 	log.Fatal(srv.ListenAndServe())
 }
 
@@ -55,9 +56,11 @@ func runInit() error {
 		return fmt.Errorf("failed to seal oracle key: %w", err)
 	}
 
-	if err := ioutil.WriteFile("oracle-key.sealed", sealed, 0644); err != nil {
-		return fmt.Errorf("failed to write oracle-key.sealed: %w", err)
+	path := "/data/oracle-key.sealed"
+	if err := ioutil.WriteFile(path, sealed, 0644); err != nil {
+		return fmt.Errorf("failed to write %s: %w", path, err)
 	}
+	log.Printf("%s is written successfully", path)
 
 	return nil
 }
