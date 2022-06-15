@@ -10,8 +10,8 @@ sudo usermod -a -G sgx_prv $USER
 
 ```bash
 ego-go build
-ego sign main
+ego sign doracle-poc
 
 unset SGX_AESM_ADDR
-AZDCAP_DEBUG_LOG_LEVEL=INFO ego run server
+AZDCAP_DEBUG_LOG_LEVEL=INFO ego run doracle-poc
 ```
