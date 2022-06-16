@@ -63,13 +63,13 @@ func main() {
 		}
 	}
 
-	oraclePrivKey, err := loadOraclePrivKey()
+	oracleKey, err := loadOracleKey()
 	if err != nil {
 		log.Fatalf("failed to load oracle key: %v", err)
 	}
 
 	myRouter := &MyRouter{
-		oraclePrivKey: oraclePrivKey,
+		oracleKey: oracleKey,
 	}
 
 	router := mux.NewRouter()
@@ -86,13 +86,13 @@ func main() {
 	log.Fatal(srv.ListenAndServe())
 }
 
-func generateOracleKey() (*rsa.PrivateKey, error) {
-	return rsa.GenerateKey(rand.Reader, 2048)
+func generateOracleKey() ([]byte, error) {
+	// for AES
+	return GenerateRandomKey(32)
 }
 
-func saveOracleKey(key *rsa.PrivateKey) error {
-	oraclePrivKeyBz := x509.MarshalPKCS1PrivateKey(key)
-	sealed, err := ecrypto.SealWithProductKey(oraclePrivKeyBz, nil)
+func saveOracleKey(key []byte) error {
+	sealed, err := ecrypto.SealWithProductKey(key, nil)
 	if err != nil {
 		return fmt.Errorf("failed to seal oracle key: %w", err)
 	}
@@ -105,30 +105,25 @@ func saveOracleKey(key *rsa.PrivateKey) error {
 	return nil
 }
 
-func loadOraclePrivKey() (*rsa.PrivateKey, error) {
+func loadOracleKey() ([]byte, error) {
 	sealed, err := ioutil.ReadFile(keyFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read %s: %w", keyFilePath, err)
 	}
 
-	unsealed, err := ecrypto.Unseal(sealed, nil)
+	key, err := ecrypto.Unseal(sealed, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unseal oracle key: %w", err)
 	}
 
-	privKey, err := x509.ParsePKCS1PrivateKey(unsealed)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse oracle key: %w", err)
-	}
-
-	return privKey, nil
+	return key, nil
 }
 
 func generateNodeKey() (*rsa.PrivateKey, error) {
 	return rsa.GenerateKey(rand.Reader, 2048)
 }
 
-func tryJoin(peerAddr string, nodePrivKey *rsa.PrivateKey) (*rsa.PrivateKey, error) {
+func tryJoin(peerAddr string, nodePrivKey *rsa.PrivateKey) ([]byte, error) {
 	report, err := enclave.GetRemoteReport(sampleReportData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get remote report: %w", err)
@@ -168,21 +163,16 @@ func tryJoin(peerAddr string, nodePrivKey *rsa.PrivateKey) (*rsa.PrivateKey, err
 		return nil, fmt.Errorf("failed to decode EncryptedOracleKeyBase64: %w", err)
 	}
 
-	oracleKeyBz, err := rsa.DecryptOAEP(sha512.New(), rand.Reader, nodePrivKey, encryptedOracleKey, nil)
+	oracleKey, err := rsa.DecryptOAEP(sha512.New(), rand.Reader, nodePrivKey, encryptedOracleKey, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt EncryptedOracleKey: %w", err)
-	}
-
-	oracleKey, err := x509.ParsePKCS1PrivateKey(oracleKeyBz)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse oracle key: %w", err)
 	}
 
 	return oracleKey, nil
 }
 
 type MyRouter struct {
-	oraclePrivKey *rsa.PrivateKey
+	oracleKey []byte
 }
 
 type JoinRequestBody struct {
@@ -267,7 +257,7 @@ func (mr *MyRouter) handleJoin(r *http.Request) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse peerNodePubKey: %w", err)
 	}
-	encryptedOracleKey, err := rsa.EncryptOAEP(sha512.New(), rand.Reader, peerNodePubKey, x509.MarshalPKCS1PrivateKey(mr.oraclePrivKey), nil)
+	encryptedOracleKey, err := rsa.EncryptOAEP(sha512.New(), rand.Reader, peerNodePubKey, mr.oracleKey, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt oracle key: %w", err)
 	}
