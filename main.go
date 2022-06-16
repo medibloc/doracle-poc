@@ -24,6 +24,8 @@ import (
 
 const keyFilePath = "/data/oracle-key.sealed"
 
+var sampleReportData = []byte("hello, man")
+
 func main() {
 	pListenAddr := flag.String("laddr", "0.0.0.0:8080", "http listen addr")
 	pInit := flag.Bool("init", false, "run doracle with the init mode")
@@ -127,7 +129,7 @@ func generateNodeKey() (*rsa.PrivateKey, error) {
 }
 
 func tryJoin(peerAddr string, nodePrivKey *rsa.PrivateKey) (*rsa.PrivateKey, error) {
-	report, err := enclave.GetRemoteReport([]byte("hello, man"))
+	report, err := enclave.GetRemoteReport(sampleReportData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get remote report: %w", err)
 	}
@@ -232,7 +234,18 @@ func (mr *MyRouter) handleJoin(r *http.Request) ([]byte, error) {
 		return nil, fmt.Errorf("failed to verify report: %w", err)
 	}
 
-	if !bytes.Equal(report.Data, []byte("hello, man")) {
+	log.Printf(
+		"[REPORT RECEIVED] data:%v, securityVersion:%v, productID:%v, uniqueID:%v, singerID:%v",
+		report.Data,
+		report.SecurityVersion,
+		binary.LittleEndian.Uint16(report.ProductID),
+		report.UniqueID,
+		hex.EncodeToString(report.SignerID),
+	)
+
+	if !bytes.Equal(report.Data[:len(sampleReportData)], sampleReportData) {
+		log.Printf("%v", report.Data[:len(sampleReportData)])
+		log.Printf("%v", sampleReportData)
 		return nil, fmt.Errorf("invalid data in the report")
 	}
 	if report.SecurityVersion != 1 {
@@ -241,7 +254,7 @@ func (mr *MyRouter) handleJoin(r *http.Request) ([]byte, error) {
 	if binary.LittleEndian.Uint16(report.ProductID) != 1 {
 		return nil, fmt.Errorf("invalid product ID in the report")
 	}
-	if hex.EncodeToString(report.SignerID) != "726642d2ab0a2be0615a5e33497a7d665f39f3beddc0f7420388afe93f54c532" {
+	if hex.EncodeToString(report.SignerID) != "be9577a203acebd6957b180cc6ccd4a1a66d03e81657d7e7584ef469de5b9b99" {
 		return nil, fmt.Errorf("invalid signer ID in the report")
 	}
 	//TODO: check unique ID
