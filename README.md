@@ -1,3 +1,5 @@
+## 1. Installation
+
 ```bash
 sudo apt update
 sudo apt install build-essential libssl-dev cpuid
@@ -13,6 +15,38 @@ sudo usermod -a -G sgx_prv $USER
 # ERROR: quote3_error_t=SGX_QL_INTERFACE_UNAVAILABLE (oe_result_t=OE_PLATFORM_ERROR) [openenclave-src/host/sgx/sgxquote.c:oe_sgx_qe_get_target_info:706]
 # ERROR: SGX Plugin _get_report(): failed to get ecdsa report. OE_PLATFORM_ERROR (oe_result_t=OE_PLATFORM_ERROR) [openenclave-src/enclave/sgx/attester.c:_get_report:320]
 ```
+
+## 2. Configuration
+
+#### Open `enclave.json` and change the path of `source` in `mounts` field.
+
+```json
+{
+  "exe": "doracle-poc",
+  "key": "private.pem",
+  "debug": true,
+  "heapSize": 512,
+  "executableHeap": false,
+  "productID": 1,
+  "securityVersion": 1,
+  "mounts": [
+    {
+      "source": "/home/ubuntu/repos/doracle-poc",
+      "target": "/data",
+      "type": "hostfs",
+      "readOnly": false
+    },
+    {
+      "target": "/tmp",
+      "type": "memfs"
+    }
+  ],
+  "env": null,
+  "files": null
+}
+```
+
+## 3. Build and Run
 
 ```bash
 ego-go build
