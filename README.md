@@ -63,7 +63,6 @@ openssl rsa -in private.pem -pubout -out public.pem
 ```
 
 Then, build a binary and sign it using the key that you generated.
->>>>>>> 7774904 (refactor: reorganize codes and use secp256k1)
 ```bash
 ego-go build -o doracle-poc cmd/doracle-poc/main.go
 ego sign doracle-poc
