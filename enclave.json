@@ -8,7 +8,7 @@
  "securityVersion": 1,
  "mounts": [
 		{
-			"source": "/home/ubuntu/repos/doracle-poc",
+			"source": "/home/gyuguen.jang/doracle-poc",
 			"target": "/data",
 			"type": "hostfs",
 			"readOnly": false
