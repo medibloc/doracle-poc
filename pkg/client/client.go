@@ -18,7 +18,7 @@ import (
 func CallHandshake(peerAddr string, nodePrivKey *btcec.PrivateKey) (*btcec.PrivateKey, error) {
 	nodePubKeyBytes := nodePrivKey.PubKey().SerializeCompressed()
 	pubKeyHash := sha256.Sum256(nodePubKeyBytes)
-	report, err := sgx.GenerateRemotePeport(pubKeyHash[:])
+	report, err := sgx.GenerateRemoteReport(pubKeyHash[:])
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate SGX remote report: %w", err)
 	}

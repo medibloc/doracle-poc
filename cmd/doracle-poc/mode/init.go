@@ -6,7 +6,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const OracleKeyFilePath = "/data/oracle-key.sealed"
+const (
+	NodeKeyFilePath   = "/data/node-key.sealed"
+	OracleKeyFilePath = "/data/oracle-key.sealed"
+)
 
 func Init() error {
 	oraclePrivKey, err := secp256k1.NewPrivKey()

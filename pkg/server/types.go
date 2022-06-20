@@ -8,3 +8,7 @@ type HandshakeRequestBody struct {
 type HandshakeResponseBody struct {
 	EncryptedOraclePrivateKeyBase64 string `json:"encrypted_oracle_private_key_base64"`
 }
+
+type Config struct {
+	Mnemonic string
+}
