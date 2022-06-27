@@ -83,13 +83,66 @@ unset SGX_AESM_ADDR
 ```
 
 Run the binary using `ego` so that it can be run in the secure enclave.
+### peer to peer 
 ```bash
 # For the first oracle that generates an oracle key,
-AZDCAP_DEBUG_LOG_LEVEL=INFO ego run doracle-poc -init
+AZDCAP_DEBUG_LOG_LEVEL=INFO ego run doracle-poc start --init
 
 # For an oracle that joins to the existing oracle group,
-AZDCAP_DEBUG_LOG_LEVEL=INFO ego run doracle-poc -peer http://<ip>:<port>
+AZDCAP_DEBUG_LOG_LEVEL=INFO ego run doracle-poc start --peer http://<ip>:<port>
 
 # For restarting the oracle that already has the oracle key,
 AZDCAP_DEBUG_LOG_LEVEL=INFO ego run doracle-poc
+```
+
+### oracle and panacea communication
+
+(First Oracle Node) Register oracle with panacea and generate oracle key.<br/>
+After executing this command, `node-key.sealed` will be created in your local storage.
+```bash
+#####[First oracle node]#####
+CHAIN_ID={your chain id}
+GRPC_ADDR={panacea grpc address}
+FIRST_ORACLE_MNEMONIC={your first oracle mnemonic}
+
+# For the first oracle registration for panacea
+AZDCAP_DEBUG_LOG_LEVEL=INFO ego run doracle-poc node register-node --chain-id $CHAIN_ID --grpcAddr $GRPC_ADDR --mnemonic "$FIRST_ORACLE_MNEMONIC"
+
+# For oracle where it need to generate a oracle key
+AZDCAP_DEBUG_LOG_LEVEL=INFO ego run doracle-poc node init-oracle-key --chain-id $CHAIN_ID --grpcAddr $GRPC_ADDR --mnemonic "$FIRST_ORACLE_MNEMONIC"
+```
+
+(Second Oracle Node) Register another oracles with panacea
+```bash
+#####[Second oracle node]#####
+CHAIN_ID={your chain id}
+GRPC_ADDR={panacea grpc address}
+SECOND_ORACLE_MNEMONIC={your second oracle mnemonic}
+
+# For the second oracle registration for panacea
+AZDCAP_DEBUG_LOG_LEVEL=INFO ego run doracle-poc node register-node --chain-id $CHAIN_ID --grpcAddr $GRPC_ADDR --mnemonic "$SECOND_ORACLE_MNEMONIC"
+```
+
+(First Oracle Node) Voting a performed on the first Oracle node
+```bash
+AZDCAP_DEBUG_LOG_LEVEL=INFO ego run doracle-poc node vote {voting target oracle address} --chain-id $CHAIN_ID --grpcAddr $GRPC_ADDR --mnemonic "$FIRST_ORACLE_MNEMONIC" --signer-id $(ego signerid doracle-poc)
+```
+
+(Second Oracle Node) If voting is successfully completed, Oracle can get oraclePrivKey<br/>
+After executing this command, `oracle-key.sealed` will be created in your local storage.
+```bash
+AZDCAP_DEBUG_LOG_LEVEL=INFO ego run doracle-poc node get-oracle-key --chain-id $CHAIN_ID --grpcAddr $GRPC_ADDR --mnemonic "$SECOND_ORACLE_MNEMONIC"
+```
+
+### Each oracle's ciphertext decryption test
+Get a file encrypted with oraclePubKey in plaintext through the command below.<br/>
+Since we get the publicKey from the panacea, we communicate with the panacea grpc. <br/>
+After the command is executed, the cipher text specified as the file name exists in the local storage.
+```bash
+AZDCAP_DEBUG_LOG_LEVEL=INFO ego run doracle-poc client generate-encrypt-data "encrypt data sample" --grpcAddr $GRPC_ADDR --output /data/{fileName}
+```
+
+You can check that decryption is possible on any oracle node.
+```bash
+AZDCAP_DEBUG_LOG_LEVEL=INFO ego run doracle-poc node read-encrypt-data /data/{fileName}
 ```
