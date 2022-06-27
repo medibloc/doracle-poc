@@ -112,7 +112,7 @@ func verify(cmd *cobra.Command, cli *client.GrpcClient, targetAddress string) er
 		return err
 	}
 
-	if oracle.String() != "PENDING" {
+	if oracle.Status != "PENDING" {
 		return fmt.Errorf("%s oracle status is not 'PENDING'", targetAddress)
 	}
 

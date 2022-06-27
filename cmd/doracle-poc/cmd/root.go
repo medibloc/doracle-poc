@@ -19,7 +19,7 @@ func Execute() error {
 }
 
 func init() {
-	rootCmd.AddCommand(startCmd)
+	rootCmd.AddCommand(CmdStart())
 	rootCmd.AddCommand(node.CmdNode())
 	rootCmd.AddCommand(client.CmdClient())
 	rootCmd.AddCommand(subscribe.CmdSubscribe())
