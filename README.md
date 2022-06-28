@@ -92,7 +92,7 @@ AZDCAP_DEBUG_LOG_LEVEL=INFO ego run doracle-poc start --init
 AZDCAP_DEBUG_LOG_LEVEL=INFO ego run doracle-poc start --peer http://<ip>:<port>
 
 # For restarting the oracle that already has the oracle key,
-AZDCAP_DEBUG_LOG_LEVEL=INFO ego run doracle-poc
+AZDCAP_DEBUG_LOG_LEVEL=INFO ego run doracle-poc start
 ```
 
 ### oracle and panacea communication
