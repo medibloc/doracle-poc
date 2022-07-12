@@ -4,7 +4,10 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	ics23 "github.com/confio/ics23/go"
+	types2 "github.com/cosmos/cosmos-sdk/codec/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	"github.com/cosmos/cosmos-sdk/x/ibc/core/23-commitment/types"
 	"github.com/medibloc/doracle-poc/pkg/panacea"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/libs/log"
@@ -19,31 +22,36 @@ import (
 	"time"
 )
 
+const (
+	chainID = "panacea-3"
+	rpcAddr = "https://rpc.gopanacea.org:443"
+)
+
 func makeLightClient(ctx context.Context) (*light.Client, error) {
-	hash, err := hex.DecodeString("0B07B2C2836E7E249516208235EF2700B37A202FA1B84F3DFBD28A7A6703352B")
+	hash, err := hex.DecodeString("3531F0F323110AA7831775417B9211348E16A29A07FBFD46018936625E4E5492")
 	if err != nil {
 		return nil, err
 	}
 	trustOptions := light.TrustOptions{
-		Period: 4 * time.Hour,
-		Height: 2,
+		Period: 365 * 24 * time.Hour,
+		Height: 99,
 		Hash:   hash,
 	}
-	pv, err := http.New("gyuguen-1", "http://localhost:26657")
+	pv, err := http.New(chainID, rpcAddr)
 	if err != nil {
 		return nil, err
 	}
 
 	pvs := []provider.Provider{pv}
-	store := dbs.New(dbm.NewMemDB(), "gyuguen-1")
+	store := dbs.New(dbm.NewMemDB(), chainID)
 	lc, err := light.NewClient(
 		ctx,
-		"gyuguen-1",
+		chainID,
 		trustOptions,
 		pv,
 		pvs,
 		store,
-		light.SequentialVerification(),
+		light.SkippingVerification(light.DefaultTrustLevel),
 		light.Logger(log.TestingLogger()),
 	)
 	return lc, nil
@@ -63,7 +71,7 @@ func TestLightClient(t *testing.T) {
 }
 
 func TestProof(t *testing.T) {
-	rpcClient, err := httprpc.New("http://localhost:26657", "/websocket")
+	rpcClient, err := httprpc.New(rpcAddr, "/websocket")
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -73,24 +81,33 @@ func TestProof(t *testing.T) {
 	require.NoError(t, err)
 	fmt.Println(trustedBlock)
 
-	acc, err := panacea.GetAccount("panacea19lnpp2w657r6petyqyydu5mk0xpnxryhzqjuza")
+	acc, err := panacea.GetAccount("panacea1ewugvs354xput6xydl5cd5tvkzcuymkejekwk3")
 	require.NoError(t, err)
 	key := authtypes.AddressStoreKey(acc)
 	option := rpcclient.ABCIQueryOptions{
 		Prove:  true,
-		Height: trustedBlock.Height,
+		Height: trustedBlock.Height - 1,
 	}
 
-	result, err := rpcClient.ABCIQueryWithOptions(ctx, "/store/acc/key", key, option)
+	result, err := rpcClient.ABCIQueryWithOptions(ctx, fmt.Sprintf("/store/%s/key", authtypes.StoreKey), key, option)
 	require.NoError(t, err)
+
+	any := &types2.Any{}
+	err = any.Unmarshal(result.Response.Value)
+	require.NoError(t, err)
+
+	var getAcc authtypes.AccountI
+	err = panacea.NewConfig().InterfaceRegistry.UnpackAny(any, &getAcc)
+	require.NoError(t, err)
+
+	proofOps := result.Response.ProofOps
+	fmt.Println(proofOps)
 
 	if !result.Response.IsOK() {
 		panic(result.Response)
 	}
 
-	/*fmt.Println(rpcClient.ConsensusState(ctx))
-
-	merkleProof, err := types.ConvertProofs(result.Response.ProofOps)
+	merkleProof, err := types.ConvertProofs(proofOps)
 	require.NoError(t, err)
 
 	sdkSpecs := []*ics23.ProofSpec{ics23.IavlSpec, ics23.TendermintSpec}
@@ -98,6 +115,5 @@ func TestProof(t *testing.T) {
 
 	merklePath := types.NewMerklePath("acc", string(key))
 	err = merkleProof.VerifyMembership(sdkSpecs, merkleRootKey, merklePath, result.Response.Value)
-	require.NoError(t, err)*/
-
+	require.NoError(t, err)
 }
