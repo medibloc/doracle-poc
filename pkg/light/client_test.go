@@ -27,6 +27,10 @@ const (
 	rpcAddr = "https://rpc.gopanacea.org:443"
 )
 
+var (
+	ctx = context.Background()
+)
+
 func makeLightClient(ctx context.Context) (*light.Client, error) {
 	hash, err := hex.DecodeString("3531F0F323110AA7831775417B9211348E16A29A07FBFD46018936625E4E5492")
 	if err != nil {
@@ -57,30 +61,34 @@ func makeLightClient(ctx context.Context) (*light.Client, error) {
 	return lc, nil
 }
 
-func TestLightClient(t *testing.T) {
-	ctx := context.Background()
+func TestLightClientSyncLastBlock(t *testing.T) {
 	lc, err := makeLightClient(ctx)
 	require.NoError(t, err)
 
 	tb, err := lc.Update(ctx, time.Now())
 	require.NoError(t, err)
 	fmt.Println(tb)
-	fmt.Println(lc.FirstTrustedHeight())
-	fmt.Println(lc.LastTrustedHeight())
-	fmt.Println(lc.TrustedLightBlock(tb.Height))
+}
+
+func TestLightClient(t *testing.T) {
+	lc, err := makeLightClient(ctx)
+	require.NoError(t, err)
+
+	fmt.Println(lc.VerifyLightBlockAtHeight(ctx, 6167926, time.Now()))
+
 }
 
 func TestProof(t *testing.T) {
 	rpcClient, err := httprpc.New(rpcAddr, "/websocket")
 	require.NoError(t, err)
 
-	ctx := context.Background()
 	lc, err := makeLightClient(ctx)
 	require.NoError(t, err)
 	trustedBlock, err := lc.Update(ctx, time.Now())
 	require.NoError(t, err)
 	fmt.Println(trustedBlock)
 
+	// MediblocLimit-1 address
 	acc, err := panacea.GetAccount("panacea1ewugvs354xput6xydl5cd5tvkzcuymkejekwk3")
 	require.NoError(t, err)
 	key := authtypes.AddressStoreKey(acc)
@@ -92,16 +100,22 @@ func TestProof(t *testing.T) {
 	result, err := rpcClient.ABCIQueryWithOptions(ctx, fmt.Sprintf("/store/%s/key", authtypes.StoreKey), key, option)
 	require.NoError(t, err)
 
-	any := &types2.Any{}
-	err = any.Unmarshal(result.Response.Value)
+	resultAccBz := result.Response.Value
+
+	resultAccAny := &types2.Any{}
+	err = resultAccAny.Unmarshal(resultAccBz)
 	require.NoError(t, err)
 
-	var getAcc authtypes.AccountI
-	err = panacea.NewConfig().InterfaceRegistry.UnpackAny(any, &getAcc)
+	var resultAcc authtypes.AccountI
+	err = panacea.NewConfig().InterfaceRegistry.UnpackAny(resultAccAny, &resultAcc)
 	require.NoError(t, err)
+
+	resultAddress, err := panacea.GetAddress(resultAcc.GetPubKey())
+	require.NoError(t, err)
+	fmt.Println("address: ", resultAddress)
 
 	proofOps := result.Response.ProofOps
-	fmt.Println(proofOps)
+	fmt.Println("proofOps: ", proofOps)
 
 	if !result.Response.IsOK() {
 		panic(result.Response)
@@ -113,7 +127,7 @@ func TestProof(t *testing.T) {
 	sdkSpecs := []*ics23.ProofSpec{ics23.IavlSpec, ics23.TendermintSpec}
 	merkleRootKey := types.NewMerkleRoot(trustedBlock.AppHash.Bytes())
 
-	merklePath := types.NewMerklePath("acc", string(key))
+	merklePath := types.NewMerklePath(authtypes.StoreKey, string(key))
 	err = merkleProof.VerifyMembership(sdkSpecs, merkleRootKey, merklePath, result.Response.Value)
 	require.NoError(t, err)
 }
